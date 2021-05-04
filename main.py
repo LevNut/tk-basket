@@ -7,58 +7,56 @@ from gamelib import Sprite, GameApp, Text
 
 from consts import *
 
-class SlowFruit(Sprite):
-    def __init__(self, app, x, y):
-        super().__init__(app, 'images/apple.png', x, y)
+# Using factory method which create a superclass and allow subclasses (CurvyFruit) to alter
+# the object and method inside of it parent class.
 
+
+class Fruit(Sprite):
+    def __init__(self, app, x, y, picture='images/apple.png', speed=FRUIT_SLOW_SPEED, x_axis=0):
+        super().__init__(app, picture, x, y)
+        self.speed = speed
+        self.x_axis = x_axis
         self.app = app
 
     def update(self):
-        self.y += FRUIT_SLOW_SPEED
+        self.y += self.speed
+        self.x += self.x_axis
 
         if self.y > CANVAS_WIDTH + 30:
             self.to_be_deleted = True
 
+        if self.x > CANVAS_WIDTH-30:
+            self.x = -(CANVAS_WIDTH-30)
+        elif self.x < -(CANVAS_WIDTH-30):
+            self.x = CANVAS_WIDTH-30
 
-class FastFruit(Sprite):
+
+class SlowFruit(Fruit):
     def __init__(self, app, x, y):
-        super().__init__(app, 'images/banana.png', x, y)
-
-        self.app = app
-
-    def update(self):
-        self.y += FRUIT_FAST_SPEED
-
-        if self.y > CANVAS_WIDTH + 30:
-            self.to_be_deleted = True
+        super().__init__(app, x, y, picture='images/apple.png')
 
 
-class SlideFruit(Sprite):
+class FastFruit(Fruit):
     def __init__(self, app, x, y):
-        super().__init__(app, 'images/cherry.png', x, y)
-
-        self.app = app
-        self.direction = randint(0,1)*2 - 1
-
-    def update(self):
-        self.y += FRUIT_FAST_SPEED
-        self.x += self.direction * 5
-
-        if self.y > CANVAS_WIDTH + 30:
-            self.to_be_deleted = True
+        super().__init__(app, x, y, picture='images/banana.png', speed=FRUIT_FAST_SPEED)
 
 
-class CurvyFruit(Sprite):
+class SlideFruit(Fruit):
     def __init__(self, app, x, y):
-        super().__init__(app, 'images/pear.png', x, y)
+        self.direction = randint(0, 1) * 2 - 1
+        super().__init__(app, x, y, picture='images/cherry.png', speed=FRUIT_FAST_SPEED, x_axis=self.direction * 5)
 
-        self.app = app
-        self.t = randint(0,360) * 2 * math.pi / 360
+
+# implement Fruit class then altered an update method
+class CurvyFruit(Fruit):
+    def __init__(self, app, x, y):
+        self.t = randint(0, 360) * 2 * math.pi / 360
+        super().__init__(app, x, y, picture='images/pear.png')
 
     def update(self):
         self.y += FRUIT_SLOW_SPEED * 1.2
         self.t += 1
-        self.x += math.sin(self.t*0.08)*10
+        self.x += math.sin(self.t * 0.08) * 10
 
         if self.y > CANVAS_WIDTH + 30:
             self.to_be_deleted = True
@@ -72,19 +70,31 @@ class Basket(Sprite):
         self.direction = None
 
     def update(self):
+        print(CANVAS_WIDTH)
         if self.direction == BASKET_LEFT:
             if self.x >= BASKET_MARGIN:
                 self.x -= BASKET_SPEED
+            elif self.x >= CANVAS_WIDTH-790:
+                self.x = CANVAS_WIDTH-10
         elif self.direction == BASKET_RIGHT:
             if self.x <= CANVAS_WIDTH - BASKET_MARGIN:
                 self.x += BASKET_SPEED
+            elif self.x >= CANVAS_WIDTH-10:
+                self.x = CANVAS_WIDTH - 790
 
     def check_collision(self, fruit):
         if self.distance_to(fruit) <= BASKET_CATCH_DISTANCE:
             fruit.to_be_deleted = True
-            self.app.score += 1
-            self.app.update_score()
 
+            if fruit.speed is FRUIT_SLOW_SPEED:
+                score = 1
+            elif fruit.speed is FRUIT_FAST_SPEED:
+                score = 2
+            else:
+                score = 3
+
+            self.app.score += score
+            self.app.update_score()
 
 class BasketGame(GameApp):
     def init_game(self):
@@ -140,12 +150,12 @@ class BasketGame(GameApp):
             self.basket.direction = BASKET_LEFT
         elif event.keysym == 'Right':
             self.basket.direction = BASKET_RIGHT
-    
+
 
 if __name__ == "__main__":
     root = tk.Tk()
     root.title("Basket Fighter")
- 
+
     # do not allow window resizing
     root.resizable(False, False)
     app = BasketGame(root, CANVAS_WIDTH, CANVAS_HEIGHT, UPDATE_DELAY)
